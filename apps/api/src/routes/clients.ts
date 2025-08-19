@@ -1,96 +1,38 @@
-import { Router } from "express";
-import { AuthenticatedRequest } from "../middleware/auth";
+import { Router, Request, Response } from "express";
+import { authenticateToken, AuthenticatedRequest } from "../middleware/auth";
+import { ClientsRepository } from "../repositories/clients";
 
 const router = Router();
 
-// Listar clientes
-router.get("/", async (req: AuthenticatedRequest, res) => {
-  try {
-    // TODO: Buscar clientes do banco de dados usando req.tenantId
-    res.json({
-      success: true,
-      data: [],
-      message: "Clientes listados com sucesso",
-    });
-  } catch (error) {
-    console.error("Erro ao listar clientes:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro interno do servidor",
-    });
+// Desativar cliente (soft delete)
+router.patch(
+  "/:id/deactivate",
+  authenticateToken,
+  async (req: AuthenticatedRequest, res: Response) => {
+    const clientId = req.params.id;
+    const tenantId = req.tenantId;
+    if (!tenantId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Tenant não autenticado" });
+    }
+    try {
+      const ok = await ClientsRepository.deactivateClient(clientId, tenantId);
+      if (!ok) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+            message: "Cliente não encontrado ou já inativo",
+          });
+      }
+      res.json({ success: true, message: "Cliente desativado com sucesso" });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ success: false, message: "Erro ao desativar cliente", error });
+    }
   }
-});
-
-// Criar cliente
-router.post("/", async (req: AuthenticatedRequest, res) => {
-  try {
-    // TODO: Implementar criação de cliente
-    res.status(201).json({
-      success: true,
-      message: "Cliente criado com sucesso",
-    });
-  } catch (error) {
-    console.error("Erro ao criar cliente:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro interno do servidor",
-    });
-  }
-});
-
-// Buscar cliente por ID
-router.get("/:id", async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-    // TODO: Buscar cliente específico
-    res.json({
-      success: true,
-      data: null,
-      message: "Cliente encontrado",
-    });
-  } catch (error) {
-    console.error("Erro ao buscar cliente:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro interno do servidor",
-    });
-  }
-});
-
-// Atualizar cliente
-router.put("/:id", async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-    // TODO: Implementar atualização de cliente
-    res.json({
-      success: true,
-      message: "Cliente atualizado com sucesso",
-    });
-  } catch (error) {
-    console.error("Erro ao atualizar cliente:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro interno do servidor",
-    });
-  }
-});
-
-// Deletar cliente
-router.delete("/:id", async (req: AuthenticatedRequest, res) => {
-  try {
-    const { id } = req.params;
-    // TODO: Implementar deleção de cliente
-    res.json({
-      success: true,
-      message: "Cliente removido com sucesso",
-    });
-  } catch (error) {
-    console.error("Erro ao remover cliente:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro interno do servidor",
-    });
-  }
-});
+);
 
 export default router;

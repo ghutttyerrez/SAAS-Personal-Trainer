@@ -187,10 +187,10 @@ CREATE TRIGGER update_chat_messages_updated_at BEFORE UPDATE ON chat_messages FO
 
 -- Inserir alguns exercícios básicos
 INSERT INTO exercises (name, description, category, muscle_groups, equipment, instructions) VALUES
-('Flexão de Braço', 'Exercício para fortalecer peitorais, tríceps e ombros', 'Peito', ARRAY['Peitoral', 'Tríceps', 'Deltoides'], ARRAY[], ARRAY['Deite-se de bruços', 'Apoie as mãos no chão', 'Empurre o corpo para cima', 'Desça controladamente']),
-('Agachamento', 'Exercício fundamental para membros inferiores', 'Pernas', ARRAY['Quadríceps', 'Glúteos', 'Posterior'], ARRAY[], ARRAY['Fique em pé com pés afastados', 'Desça como se fosse sentar', 'Mantenha o peito ereto', 'Retorne à posição inicial']),
-('Prancha', 'Exercício isométrico para core', 'Core', ARRAY['Abdômen', 'Core'], ARRAY[], ARRAY['Posição de flexão', 'Apoie nos antebraços', 'Mantenha o corpo reto', 'Contraia o abdômen']),
-('Burpee', 'Exercício cardiovascular completo', 'Cardio', ARRAY['Corpo todo'], ARRAY[], ARRAY['Agachamento', 'Flexão', 'Salto vertical', 'Repetir sequência']),
+('Flexão de Braço', 'Exercício para fortalecer peitorais, tríceps e ombros', 'Peito', ARRAY['Peitoral', 'Tríceps', 'Deltoides'], ARRAY[]::text[], ARRAY['Deite-se de bruços', 'Apoie as mãos no chão', 'Empurre o corpo para cima', 'Desça controladamente']),
+('Agachamento', 'Exercício fundamental para membros inferiores', 'Pernas', ARRAY['Quadríceps', 'Glúteos', 'Posterior'], ARRAY[]::text[], ARRAY['Fique em pé com pés afastados', 'Desça como se fosse sentar', 'Mantenha o peito ereto', 'Retorne à posição inicial']),
+('Prancha', 'Exercício isométrico para core', 'Core', ARRAY['Abdômen', 'Core'], ARRAY[]::text[], ARRAY['Posição de flexão', 'Apoie nos antebraços', 'Mantenha o corpo reto', 'Contraia o abdômen']),
+('Burpee', 'Exercício cardiovascular completo', 'Cardio', ARRAY['Corpo todo'], ARRAY[]::text[], ARRAY['Agachamento', 'Flexão', 'Salto vertical', 'Repetir sequência']),
 ('Rosca Direta', 'Exercício para bíceps', 'Braços', ARRAY['Bíceps'], ARRAY['Halteres'], ARRAY['Segure os halteres', 'Flexione os cotovelos', 'Contraia os bíceps', 'Desça controladamente']);
 
 -- Commit das alterações
