@@ -15,7 +15,7 @@
     "declaration": false,
     "incremental": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
-    "types": [],
+    "types": ["node", "jest"],
     "noImplicitAny": false,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true

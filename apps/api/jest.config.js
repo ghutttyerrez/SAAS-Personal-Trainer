@@ -1,0 +1,30 @@
+module.exports = {
+  preset: "ts-jest",
+  testEnvironment: "node",
+  roots: ["<rootDir>/src"],
+  testMatch: ["**/__tests__/**/*.test.ts", "**/*.test.ts", "**/*.spec.ts"],
+  testPathIgnorePatterns: [
+    "<rootDir>/src/__tests__/setup.ts",
+    "<rootDir>/src/__tests__/globalSetup.ts",
+    "<rootDir>/src/__tests__/globalTeardown.ts",
+    "<rootDir>/src/__tests__/utils.ts",
+    "<rootDir>/src/__tests__/mocks.ts",
+  ],
+  collectCoverageFrom: [
+    "src/**/*.ts",
+    "!src/**/*.d.ts",
+    "!src/index.ts",
+    "!src/**/__tests__/**",
+    "!src/**/*.test.ts",
+    "!src/**/*.spec.ts",
+  ],
+  coverageDirectory: "coverage",
+  coverageReporters: ["text", "lcov", "html"],
+  setupFilesAfterEnv: ["<rootDir>/src/__tests__/setup.ts"],
+  testTimeout: 10000,
+  moduleNameMapper: {
+    "^@/(.*)$": "<rootDir>/src/$1",
+  },
+  globalSetup: "<rootDir>/src/__tests__/globalSetup.ts",
+  globalTeardown: "<rootDir>/src/__tests__/globalTeardown.ts",
+};
