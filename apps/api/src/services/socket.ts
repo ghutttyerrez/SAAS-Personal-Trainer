@@ -1,5 +1,6 @@
 import { Server as SocketIOServer } from "socket.io";
 import jwt from "jsonwebtoken";
+import { ChatRepository } from "../repositories/chat";
 
 interface AuthenticatedSocket {
   userId: string;
@@ -39,25 +40,40 @@ export const setupSocketIO = (io: SocketIOServer) => {
     // Evento para enviar mensagem
     socket.on("send_message", async (data) => {
       try {
-        const { receiverId, content, type = "text" } = data;
+        const { receiverId, content, type = "text", roomId } = data;
 
-        // TODO: Salvar mensagem no banco de dados
+        // Criar sala direta automaticamente se não for fornecido roomId
+        let finalRoomId = roomId;
+        if (!finalRoomId) {
+          const room = await ChatRepository.getOrCreateDirectRoom(
+            (socket as any).tenantId,
+            authenticatedSocket.userId,
+            receiverId
+          );
+          finalRoomId = room.id;
+        }
 
-        // Emitir mensagem para o destinatário
-        socket.to(`user_${receiverId}`).emit("new_message", {
-          id: Date.now().toString(), // TODO: usar UUID real
+        const message = await ChatRepository.createMessage({
+          roomId: finalRoomId,
           senderId: authenticatedSocket.userId,
           receiverId,
+          tenantId: (socket as any).tenantId,
           content,
           type,
-          timestamp: new Date(),
-          isRead: false,
+        });
+
+        // Emitir mensagem para o destinatário e para membros da sala
+        socket.to(`user_${receiverId}`).emit("new_message", message);
+        io.to(`tenant_${(socket as any).tenantId}`).emit("room_updated", {
+          roomId: finalRoomId,
+          lastMessage: message,
         });
 
         // Confirmar envio para o remetente
         socket.emit("message_sent", {
           status: "success",
-          messageId: Date.now().toString(),
+          messageId: message.id,
+          roomId: finalRoomId,
         });
       } catch (error) {
         console.error("Erro ao enviar mensagem:", error);
@@ -68,15 +84,25 @@ export const setupSocketIO = (io: SocketIOServer) => {
     // Evento para marcar mensagem como lida
     socket.on("mark_as_read", async (data) => {
       try {
-        const { messageId, senderId } = data;
+        const { messageId, roomId, senderId } = data;
 
-        // TODO: Atualizar status no banco de dados
+        const result = await ChatRepository.markAsRead(
+          roomId,
+          authenticatedSocket.userId,
+          messageId ? { messageId } : { fromSenderId: senderId }
+        );
 
-        // Notificar o remetente
-        socket.to(`user_${senderId}`).emit("message_read", {
-          messageId,
-          readBy: authenticatedSocket.userId,
-          readAt: new Date(),
+        // Notificar o remetente e participantes da sala
+        if (senderId) {
+          socket.to(`user_${senderId}`).emit("message_read", {
+            messageIds: result.messageIds,
+            readBy: authenticatedSocket.userId,
+            readAt: new Date(),
+          });
+        }
+        io.to(`tenant_${(socket as any).tenantId}`).emit("messages_read", {
+          roomId,
+          messageIds: result.messageIds,
         });
       } catch (error) {
         console.error("Erro ao marcar como lida:", error);

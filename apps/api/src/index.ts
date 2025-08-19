@@ -6,11 +6,14 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import authRoutes from "./routes/auth";
 import clientRoutes from "./routes/clients";
-import workoutRoutes from "./routes/workouts";
-import progressRoutes from "./routes/progress";
 import chatRoutes from "./routes/chat";
+// import clientRoutes from "./routes/clients";
+// import workoutRoutes from "./routes/workouts";
+// import progressRoutes from "./routes/progress";
+// import chatRoutes from "./routes/chat";
 import { authenticateToken } from "./middleware/auth";
 import { setupSocketIO } from "./services/socket";
+import { testConnection } from "./config/database";
 
 // Carregar variáveis de ambiente
 dotenv.config();
@@ -31,17 +34,23 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check
-app.get("/health", (req, res) => {
-  res.json({ status: "OK", timestamp: new Date().toISOString() });
+app.get("/health", async (req, res) => {
+  const dbConnected = await testConnection();
+  res.json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    database: dbConnected ? "connected" : "disconnected",
+  });
 });
 
 // Rotas públicas
 app.use("/api/auth", authRoutes);
+app.use("/api/clients", authenticateToken, clientRoutes);
 
 // Rotas protegidas
-app.use("/api/clients", authenticateToken, clientRoutes);
-app.use("/api/workouts", authenticateToken, workoutRoutes);
-app.use("/api/progress", authenticateToken, progressRoutes);
+// app.use("/api/clients", authenticateToken, clientRoutes);
+// app.use("/api/workouts", authenticateToken, workoutRoutes);
+// app.use("/api/progress", authenticateToken, progressRoutes);
 app.use("/api/chat", authenticateToken, chatRoutes);
 
 // Setup Socket.IO
@@ -74,7 +83,31 @@ app.use("*", (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 
-httpServer.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`📊 Health check disponível em http://localhost:${PORT}/health`);
-});
+// Inicializar servidor
+const startServer = async () => {
+  try {
+    // Testar conexão com banco de dados
+    const dbConnected = await testConnection();
+    if (!dbConnected) {
+      console.warn("⚠️ Servidor iniciando sem conexão com banco de dados");
+    }
+
+    httpServer.listen(PORT, () => {
+      console.log(`🚀 Servidor rodando na porta ${PORT}`);
+      console.log(
+        `📊 Health check disponível em http://localhost:${PORT}/health`
+      );
+      console.log(`🔑 Endpoints de autenticação:`);
+      console.log(`   POST /api/auth/register - Registro`);
+      console.log(`   POST /api/auth/login - Login`);
+      console.log(`   POST /api/auth/refresh - Refresh token`);
+      console.log(`   POST /api/auth/logout - Logout`);
+      console.log(`   GET  /api/auth/me - Perfil do usuário`);
+    });
+  } catch (error) {
+    console.error("❌ Erro ao iniciar servidor:", error);
+    process.exit(1);
+  }
+};
+
+startServer();
