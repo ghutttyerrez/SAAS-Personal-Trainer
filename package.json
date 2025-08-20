@@ -11,7 +11,22 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "type-check": "turbo run type-check",
-    "clean": "turbo run clean"
+    "clean": "turbo run clean",
+    "test": "turbo run test",
+    "test:coverage": "turbo run test:coverage",
+    "test:watch": "turbo run test:watch",
+    "docker:build": "./scripts/deploy.sh staging latest build",
+    "docker:dev": "docker-compose -f docker-compose.dev.yml up -d",
+    "docker:down": "docker-compose -f docker-compose.dev.yml down",
+    "docker:logs": "docker-compose -f docker-compose.dev.yml logs -f",
+    "deploy:dev": "./scripts/deploy.sh development latest",
+    "deploy:staging": "./scripts/deploy.sh staging latest",
+    "deploy:prod": "./scripts/deploy.sh production latest",
+    "ci:check": "npm run lint && npm run type-check && npm run test",
+    "ci:build": "npm run ci:check && npm run build",
+    "release": "npm version patch && git push && git push --tags",
+    "release:minor": "npm version minor && git push && git push --tags",
+    "release:major": "npm version major && git push && git push --tags"
   },
   "devDependencies": {
     "turbo": "^2.5.6"

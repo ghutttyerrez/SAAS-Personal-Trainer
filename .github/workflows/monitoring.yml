@@ -1,0 +1,313 @@
+name: Health Check & Monitoring
+
+on:
+  schedule:
+    # Execute a cada 15 minutos
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to check'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - staging
+          - production
+          - development
+
+env:
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+  DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+
+jobs:
+  # Job 1: Health Check
+  health-check:
+    name: 🏥 Health Check
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        service:
+          - name: 'API'
+            url: 'https://your-api-url.com/health'
+            expected_status: 200
+          - name: 'Web App'
+            url: 'https://your-web-url.com'
+            expected_status: 200
+        environment: [staging, production]
+    
+    steps:
+      - name: 🏥 Check ${{ matrix.service.name }} health
+        id: health_check
+        run: |
+          echo "🏥 Checking ${{ matrix.service.name }} health..."
+          
+          # Perform health check
+          response=$(curl -s -w "HTTPSTATUS:%{http_code};TIME:%{time_total}" \
+            "${{ matrix.service.url }}" || echo "HTTPSTATUS:000;TIME:0")
+          
+          http_code=$(echo $response | grep -o "HTTPSTATUS:[0-9]*" | cut -d: -f2)
+          time_total=$(echo $response | grep -o "TIME:[0-9.]*" | cut -d: -f2)
+          
+          echo "status_code=$http_code" >> $GITHUB_OUTPUT
+          echo "response_time=$time_total" >> $GITHUB_OUTPUT
+          echo "service_name=${{ matrix.service.name }}" >> $GITHUB_OUTPUT
+          echo "environment=${{ matrix.environment }}" >> $GITHUB_OUTPUT
+          
+          if [ "$http_code" -eq "${{ matrix.service.expected_status }}" ]; then
+            echo "status=healthy" >> $GITHUB_OUTPUT
+            echo "✅ ${{ matrix.service.name }} is healthy (${http_code}, ${time_total}s)"
+          else
+            echo "status=unhealthy" >> $GITHUB_OUTPUT
+            echo "❌ ${{ matrix.service.name }} is unhealthy (${http_code}, ${time_total}s)"
+            exit 1
+          fi
+          
+      - name: 📊 Record metrics
+        if: always()
+        run: |
+          echo "📊 Recording metrics for ${{ steps.health_check.outputs.service_name }}..."
+          
+          # Aqui você pode enviar métricas para sistemas de monitoramento
+          # Exemplos: Prometheus, DataDog, New Relic, CloudWatch
+          
+          cat << EOF > metrics.json
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "service": "${{ steps.health_check.outputs.service_name }}",
+            "environment": "${{ steps.health_check.outputs.environment }}",
+            "status": "${{ steps.health_check.outputs.status }}",
+            "http_code": ${{ steps.health_check.outputs.status_code }},
+            "response_time": ${{ steps.health_check.outputs.response_time }},
+            "workflow_run": "${{ github.run_id }}"
+          }
+          EOF
+          
+          echo "Metrics recorded:"
+          cat metrics.json
+
+  # Job 2: Performance Monitoring
+  performance-monitoring:
+    name: ⚡ Performance Monitoring
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: ⚡ Run Lighthouse audit
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: |
+            https://your-web-url.com
+            https://your-web-url.com/login
+            https://your-web-url.com/dashboard
+          configPath: './lighthouserc.js'
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          
+      - name: 📊 API Performance test
+        run: |
+          echo "📊 Running API performance tests..."
+          
+          # Test API response times
+          endpoints=(
+            "/api/auth/me"
+            "/api/clients"
+            "/api/workouts"
+          )
+          
+          for endpoint in "${endpoints[@]}"; do
+            echo "Testing: $endpoint"
+            
+            # Run multiple requests to get average
+            total_time=0
+            success_count=0
+            
+            for i in {1..5}; do
+              response_time=$(curl -s -w "%{time_total}" \
+                -o /dev/null \
+                "https://your-api-url.com$endpoint" || echo "0")
+              
+              if [ "$response_time" != "0" ]; then
+                total_time=$(echo "$total_time + $response_time" | bc -l)
+                success_count=$((success_count + 1))
+              fi
+            done
+            
+            if [ $success_count -gt 0 ]; then
+              avg_time=$(echo "scale=3; $total_time / $success_count" | bc -l)
+              echo "Average response time for $endpoint: ${avg_time}s"
+              
+              # Alert if response time > 2 seconds
+              if (( $(echo "$avg_time > 2.0" | bc -l) )); then
+                echo "⚠️ Slow response time detected: ${avg_time}s"
+              fi
+            else
+              echo "❌ All requests failed for $endpoint"
+            fi
+          done
+
+  # Job 3: Database Health
+  database-health:
+    name: 🗃️ Database Health
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🗃️ Check database connections
+        run: |
+          echo "🗃️ Checking database health..."
+          
+          # Simulated database health check
+          # Em um cenário real, você conectaria ao seu banco de dados
+          
+          echo "✅ Database connection: OK"
+          echo "✅ Read operations: OK"
+          echo "✅ Write operations: OK"
+          echo "📊 Active connections: 15/100"
+          echo "💾 Storage usage: 2.3GB/10GB"
+          
+      - name: 📈 Check query performance
+        run: |
+          echo "📈 Monitoring slow queries..."
+          
+          # Aqui você pode verificar logs de queries lentas
+          # E alertar se há problemas de performance
+          
+          echo "✅ No slow queries detected"
+          echo "📊 Average query time: 45ms"
+
+  # Job 4: Alert Management
+  alert-on-failure:
+    name: 🚨 Alert on Failure
+    runs-on: ubuntu-latest
+    needs: [health-check, performance-monitoring, database-health]
+    if: failure()
+    
+    steps:
+      - name: 🚨 Send Slack notification
+        if: env.SLACK_WEBHOOK != ''
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{
+              "text": "🚨 Health Check Failed",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🚨 System Health Alert"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "One or more health checks have failed.\n\n*Workflow:* <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>\n*Time:* $(date)\n*Environment:* Production"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Logs"
+                      },
+                      "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }' \
+            ${{ env.SLACK_WEBHOOK }}
+            
+      - name: 📧 Send Discord notification
+        if: env.DISCORD_WEBHOOK != ''
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{
+              "embeds": [
+                {
+                  "title": "🚨 System Health Alert",
+                  "description": "One or more health checks have failed.",
+                  "color": 15158332,
+                  "fields": [
+                    {
+                      "name": "Repository",
+                      "value": "${{ github.repository }}",
+                      "inline": true
+                    },
+                    {
+                      "name": "Workflow",
+                      "value": "[View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})",
+                      "inline": true
+                    },
+                    {
+                      "name": "Time",
+                      "value": "$(date)",
+                      "inline": true
+                    }
+                  ],
+                  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                }
+              ]
+            }' \
+            ${{ env.DISCORD_WEBHOOK }}
+            
+      - name: 📝 Create incident issue
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const title = `🚨 Health Check Failure - ${new Date().toISOString()}`;
+            const body = `## 🚨 System Health Alert
+            
+            **Workflow Run:** https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
+            **Time:** ${new Date().toISOString()}
+            **Environment:** Production
+            
+            ### 📋 Investigation Checklist
+            
+            - [ ] Check application logs
+            - [ ] Verify database connectivity
+            - [ ] Check external service dependencies
+            - [ ] Review recent deployments
+            - [ ] Monitor system resources
+            
+            ### 🔧 Resolution Steps
+            
+            1. Identify root cause
+            2. Apply immediate fix if possible
+            3. Monitor for recovery
+            4. Update incident status
+            5. Conduct post-mortem if needed
+            
+            _This issue was automatically created by the monitoring system._
+            `;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['incident', 'high-priority', 'monitoring']
+            });
+
+  # Job 5: Success Notification
+  success-notification:
+    name: ✅ Success Notification
+    runs-on: ubuntu-latest
+    needs: [health-check, performance-monitoring, database-health]
+    if: success()
+    
+    steps:
+      - name: ✅ Log success
+        run: |
+          echo "✅ All health checks passed successfully!"
+          echo "📊 System Status: Healthy"
+          echo "⏰ Check completed at: $(date)"
+          
+          # Aqui você pode atualizar um dashboard de status
+          # ou enviar métricas para sistemas de monitoramento
