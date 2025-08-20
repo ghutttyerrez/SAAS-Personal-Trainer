@@ -1,6 +1,18 @@
 import { Router } from "express";
 import { authenticateToken, AuthenticatedRequest } from "../middleware/auth";
 import { ChatRepository } from "../repositories/chat";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "../middleware/validation";
+import {
+  createDirectRoomSchema,
+  sendMessageSchema,
+  markAsReadSchema,
+  idParamSchema,
+  paginationQuerySchema,
+} from "../schemas/validation";
 
 const router = Router();
 
@@ -15,12 +27,10 @@ router.get(
       const rooms = await ChatRepository.listRoomsForUser(tenantId, userId);
       res.json({ success: true, data: rooms });
     } catch (error: any) {
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: error.message || "Erro ao listar salas",
-        });
+      res.status(500).json({
+        success: false,
+        message: error.message || "Erro ao listar salas",
+      });
     }
   }
 );
@@ -46,12 +56,10 @@ router.post(
       );
       res.json({ success: true, data: room });
     } catch (error: any) {
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: error.message || "Erro ao criar sala",
-        });
+      res.status(500).json({
+        success: false,
+        message: error.message || "Erro ao criar sala",
+      });
     }
   }
 );
@@ -68,12 +76,10 @@ router.get(
       const result = await ChatRepository.listMessages(roomId, page, limit);
       res.json({ success: true, data: result });
     } catch (error: any) {
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: error.message || "Erro ao listar mensagens",
-        });
+      res.status(500).json({
+        success: false,
+        message: error.message || "Erro ao listar mensagens",
+      });
     }
   }
 );
@@ -93,12 +99,10 @@ router.post(
         type?: "text" | "image" | "file";
       };
       if (!receiverId || !content)
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "receiverId e content são obrigatórios",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "receiverId e content são obrigatórios",
+        });
 
       const msg = await ChatRepository.createMessage({
         roomId,
@@ -110,12 +114,10 @@ router.post(
       });
       res.status(201).json({ success: true, data: msg });
     } catch (error: any) {
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: error.message || "Erro ao enviar mensagem",
-        });
+      res.status(500).json({
+        success: false,
+        message: error.message || "Erro ao enviar mensagem",
+      });
     }
   }
 );
@@ -138,12 +140,10 @@ router.post(
       });
       res.json({ success: true, data: result });
     } catch (error: any) {
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: error.message || "Erro ao marcar como lida",
-        });
+      res.status(500).json({
+        success: false,
+        message: error.message || "Erro ao marcar como lida",
+      });
     }
   }
 );
@@ -159,12 +159,10 @@ router.get(
       const map = await ChatRepository.getUnreadCountByRoom(tenantId, userId);
       res.json({ success: true, data: map });
     } catch (error: any) {
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: error.message || "Erro ao buscar não lidas",
-        });
+      res.status(500).json({
+        success: false,
+        message: error.message || "Erro ao buscar não lidas",
+      });
     }
   }
 );

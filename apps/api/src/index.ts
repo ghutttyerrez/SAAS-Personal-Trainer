@@ -7,10 +7,9 @@ import { Server } from "socket.io";
 import authRoutes from "./routes/auth";
 import clientRoutes from "./routes/clients";
 import chatRoutes from "./routes/chat";
-// import clientRoutes from "./routes/clients";
-// import workoutRoutes from "./routes/workouts";
-// import progressRoutes from "./routes/progress";
-// import chatRoutes from "./routes/chat";
+import workoutRoutes from "./routes/workouts";
+import progressRoutes from "./routes/progress";
+import devRoutes from "./routes/test";
 import { authenticateToken } from "./middleware/auth";
 import { setupSocketIO } from "./services/socket";
 import { testConnection } from "./config/database";
@@ -45,13 +44,17 @@ app.get("/health", async (req, res) => {
 
 // Rotas públicas
 app.use("/api/auth", authRoutes);
-app.use("/api/clients", authenticateToken, clientRoutes);
 
 // Rotas protegidas
-// app.use("/api/clients", authenticateToken, clientRoutes);
-// app.use("/api/workouts", authenticateToken, workoutRoutes);
-// app.use("/api/progress", authenticateToken, progressRoutes);
+app.use("/api/clients", authenticateToken, clientRoutes);
+app.use("/api/workouts", authenticateToken, workoutRoutes);
+app.use("/api/progress", authenticateToken, progressRoutes);
 app.use("/api/chat", authenticateToken, chatRoutes);
+
+// Dev-only routes
+if (process.env.NODE_ENV !== "production") {
+  app.use("/api/dev", devRoutes);
+}
 
 // Setup Socket.IO
 setupSocketIO(io);

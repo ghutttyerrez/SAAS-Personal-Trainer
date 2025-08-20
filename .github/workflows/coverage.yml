@@ -1,0 +1,181 @@
+name: Code Coverage Report
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: "18.x"
+
+jobs:
+  coverage:
+    name: 📊 Coverage Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: 📥 Install dependencies
+        run: npm ci
+
+      - name: 🧪 Run tests with coverage
+        run: |
+          cd apps/api
+          npm run test:coverage
+
+      - name: 📈 Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ./apps/api/coverage
+          files: ./apps/api/coverage/lcov.info
+          flags: api
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: 📊 Coverage Summary
+        run: |
+          cd apps/api
+          echo "## 📊 Test Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f coverage/coverage-summary.json ]; then
+            # Parse coverage data
+            lines=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+            functions=$(cat coverage/coverage-summary.json | jq '.total.functions.pct')
+            branches=$(cat coverage/coverage-summary.json | jq '.total.branches.pct')
+            statements=$(cat coverage/coverage-summary.json | jq '.total.statements.pct')
+            
+            # Determine status
+            get_status() {
+              local pct=$1
+              if (( $(echo "$pct >= 90" | bc -l) )); then echo "🟢 Excellent"
+              elif (( $(echo "$pct >= 80" | bc -l) )); then echo "🟡 Good"
+              elif (( $(echo "$pct >= 70" | bc -l) )); then echo "🟠 Acceptable"
+              else echo "🔴 Needs Improvement"; fi
+            }
+            
+            echo "| Metric | Coverage | Status |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|----------|---------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Lines | ${lines}% | $(get_status $lines) |" >> $GITHUB_STEP_SUMMARY
+            echo "| Functions | ${functions}% | $(get_status $functions) |" >> $GITHUB_STEP_SUMMARY
+            echo "| Branches | ${branches}% | $(get_status $branches) |" >> $GITHUB_STEP_SUMMARY
+            echo "| Statements | ${statements}% | $(get_status $statements) |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Minimum Required:** 70%" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            # Check if coverage meets threshold
+            if (( $(echo "$lines >= 70" | bc -l) )); then
+              echo "✅ **Coverage Threshold Met!** All metrics above 70%" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Coverage Below Threshold!** Lines coverage is ${lines}%" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+          else
+            echo "❌ Coverage report not found" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      - name: 💬 Comment PR with coverage
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = './apps/api/coverage/coverage-summary.json';
+
+            if (!fs.existsSync(path)) {
+              console.log('Coverage file not found');
+              return;
+            }
+
+            const coverage = JSON.parse(fs.readFileSync(path, 'utf8'));
+
+            const formatCoverage = (pct) => {
+              if (pct >= 90) return `🟢 ${pct}%`;
+              if (pct >= 80) return `🟡 ${pct}%`;
+              if (pct >= 70) return `🟠 ${pct}%`;
+              return `🔴 ${pct}%`;
+            };
+
+            const comment = `## 📊 Code Coverage Report
+
+            | Metric | Coverage | Status |
+            |--------|----------|---------|
+            | Lines | ${formatCoverage(coverage.total.lines.pct)} | ${coverage.total.lines.pct >= 70 ? '✅ Pass' : '❌ Fail'} |
+            | Functions | ${formatCoverage(coverage.total.functions.pct)} | ${coverage.total.functions.pct >= 70 ? '✅ Pass' : '❌ Fail'} |
+            | Branches | ${formatCoverage(coverage.total.branches.pct)} | ${coverage.total.branches.pct >= 70 ? '✅ Pass' : '❌ Fail'} |
+            | Statements | ${formatCoverage(coverage.total.statements.pct)} | ${coverage.total.statements.pct >= 70 ? '✅ Pass' : '❌ Fail'} |
+
+            **Minimum Required:** 70%
+
+            ${coverage.total.lines.pct >= 70 ? 
+              '✅ **All coverage requirements met!**' : 
+              '❌ **Coverage below threshold!** Please add more tests.'}
+              
+            View detailed report: [Codecov](https://codecov.io/gh/${{ github.repository }}/pull/${{ github.event.number }})
+            `;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+
+            const existingComment = comments.find(comment => 
+              comment.body.includes('📊 Code Coverage Report')
+            );
+
+            if (existingComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                comment_id: existingComment.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+
+      - name: 🏷️ Generate coverage badge
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cd apps/api
+          coverage_pct=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+          echo "Coverage: ${coverage_pct}%"
+
+          # Determine badge color
+          if (( $(echo "$coverage_pct >= 90" | bc -l) )); then
+            color="brightgreen"
+          elif (( $(echo "$coverage_pct >= 80" | bc -l) )); then
+            color="green"  
+          elif (( $(echo "$coverage_pct >= 70" | bc -l) )); then
+            color="yellow"
+          elif (( $(echo "$coverage_pct >= 60" | bc -l) )); then
+            color="orange"
+          else
+            color="red"
+          fi
+
+          echo "Generated badge with color: $color"

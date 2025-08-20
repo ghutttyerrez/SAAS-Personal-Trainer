@@ -1,0 +1,315 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: "18.x"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ========================================
+  # CONTINUOUS INTEGRATION (CI)
+  # ========================================
+
+  # Job 1: Code Quality & Testing
+  test:
+    name: 🧪 Tests & Code Quality
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        workspace: [api, web, mobile]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: 📥 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Lint code
+        run: npm run lint --workspace @personal-trainer/${{ matrix.workspace }}
+        continue-on-error: false
+
+      - name: 🏗️ Build application
+        run: npm run build --workspace @personal-trainer/${{ matrix.workspace }}
+
+      - name: 🧪 Run tests
+        run: npm run test --workspace @personal-trainer/${{ matrix.workspace }}
+
+      - name: 📊 Generate coverage report
+        if: matrix.workspace == 'api'
+        run: npm run test:coverage --workspace @personal-trainer/api
+
+      - name: 📈 Upload coverage to Codecov
+        if: matrix.workspace == 'api'
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./apps/api/coverage/lcov.info
+          flags: api
+          name: api-coverage
+          fail_ci_if_error: true
+          verbose: true
+
+      - name: 📊 Generate coverage badge
+        if: matrix.workspace == 'api' && github.ref == 'refs/heads/main'
+        run: |
+          cd apps/api
+          coverage_pct=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+          echo "Coverage: ${coverage_pct}%"
+
+          # Create coverage badge
+          if (( $(echo "$coverage_pct >= 90" | bc -l) )); then
+            color="brightgreen"
+          elif (( $(echo "$coverage_pct >= 80" | bc -l) )); then
+            color="green"
+          elif (( $(echo "$coverage_pct >= 70" | bc -l) )); then
+            color="yellow"
+          elif (( $(echo "$coverage_pct >= 60" | bc -l) )); then
+            color="orange"
+          else
+            color="red"
+          fi
+
+          echo "Badge color: $color"
+
+      - name: 💾 Cache build artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache@v3
+        with:
+          path: |
+            apps/${{ matrix.workspace }}/dist
+            apps/${{ matrix.workspace }}/build
+          key: build-${{ matrix.workspace }}-${{ github.sha }}
+
+  # Job 2: Security Scanning
+  security:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
+
+      - name: 📤 Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: "trivy-results.sarif"
+
+      - name: 🔐 Audit npm dependencies
+        run: npm audit --audit-level=high
+
+  # Job 3: Quality Gates
+  quality-gate:
+    name: ✅ Quality Gate
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: 📥 Install dependencies
+        run: npm ci
+
+      - name: 📊 Check test coverage
+        run: |
+          cd apps/api
+          npm run test:coverage
+          coverage=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+          echo "Current coverage: $coverage%"
+          if (( $(echo "$coverage < 70" | bc -l) )); then
+            echo "❌ Coverage below 70% threshold"
+            exit 1
+          fi
+          echo "✅ Coverage above 70% threshold"
+
+      - name: 📝 Comment PR with coverage
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const coverage = JSON.parse(fs.readFileSync('apps/api/coverage/coverage-summary.json', 'utf8'));
+
+            const comment = `## 📊 Test Coverage Report
+
+            | Metric | Coverage | Status |
+            |--------|----------|---------|
+            | Lines | ${coverage.total.lines.pct}% | ${coverage.total.lines.pct >= 70 ? '✅' : '❌'} |
+            | Functions | ${coverage.total.functions.pct}% | ${coverage.total.functions.pct >= 70 ? '✅' : '❌'} |
+            | Branches | ${coverage.total.branches.pct}% | ${coverage.total.branches.pct >= 70 ? '✅' : '❌'} |
+            | Statements | ${coverage.total.statements.pct}% | ${coverage.total.statements.pct >= 70 ? '✅' : '❌'} |
+
+            **Minimum required: 70%**
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # ========================================
+  # CONTINUOUS DEPLOYMENT (CD)
+  # ========================================
+
+  # Job 4: Build Docker Images
+  build:
+    name: 🐳 Build Images
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    strategy:
+      matrix:
+        service: [api, web]
+
+    outputs:
+      api-image: ${{ steps.meta.outputs.tags }}
+      web-image: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔐 Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📝 Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🐳 Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/${{ matrix.service }}
+          file: ./apps/${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Job 5: Deploy to Staging
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    environment: staging
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🚀 Deploy to staging
+        run: |
+          echo "🚀 Deploying to staging environment..."
+          echo "API Image: ${{ needs.build.outputs.api-image }}"
+          echo "Web Image: ${{ needs.build.outputs.web-image }}"
+          # Aqui você pode adicionar comandos específicos para deploy
+          # Por exemplo: kubectl, docker-compose, terraform, etc.
+
+      - name: 🧪 Run staging tests
+        run: |
+          echo "🧪 Running smoke tests on staging..."
+          # Adicionar testes de fumaça aqui
+
+      - name: 📋 Health check
+        run: |
+          echo "📋 Performing health check..."
+          # Verificar se a aplicação está funcionando
+
+  # Job 6: Deploy to Production
+  deploy-production:
+    name: 🌟 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, deploy-staging]
+    environment: production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🌟 Deploy to production
+        run: |
+          echo "🌟 Deploying to production environment..."
+          echo "API Image: ${{ needs.build.outputs.api-image }}"
+          echo "Web Image: ${{ needs.build.outputs.web-image }}"
+          # Comandos de deploy para produção
+
+      - name: 📊 Post-deployment verification
+        run: |
+          echo "📊 Verifying production deployment..."
+          # Verificações pós-deploy
+
+      - name: 📢 Notify deployment
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment.id,
+              state: 'success',
+              description: 'Deployment completed successfully',
+              environment_url: 'https://your-production-url.com'
+            });
+
+  # Job 7: Cleanup
+  cleanup:
+    name: 🧹 Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always()
+
+    steps:
+      - name: 🧹 Clean up old artifacts
+        run: |
+          echo "🧹 Cleaning up old artifacts and images..."
+          # Limpeza de artefatos antigos
