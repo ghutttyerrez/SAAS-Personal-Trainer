@@ -9,7 +9,11 @@ export const validateBody = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       const validatedData = schema.parse(req.body);
-      (req as ValidatedRequest).validatedData = validatedData;
+      // Merge com dados já validados (params/query) para evitar sobrescrever
+      (req as ValidatedRequest).validatedData = {
+        ...(req as ValidatedRequest).validatedData,
+        ...(validatedData as any),
+      };
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {

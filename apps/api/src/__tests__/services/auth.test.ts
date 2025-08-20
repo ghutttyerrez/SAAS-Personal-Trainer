@@ -11,16 +11,21 @@ jest.mock("../../repositories/auth", () => ({
     findByEmail: jest.fn(),
     findById: jest.fn(),
     create: jest.fn(),
+    getPasswordHash: jest.fn(),
+    updateLastLogin: jest.fn(),
+    emailExists: jest.fn(),
   },
   TenantRepository: {
     findById: jest.fn(),
-    create: jest.fn(),
+    createTenantWithUser: jest.fn(),
   },
 }));
 
 jest.mock("../../repositories/refreshToken", () => ({
   RefreshTokenRepository: {
-    findByToken: jest.fn(),
+    verify: jest.fn(),
+    revoke: jest.fn(),
+    revokeAllByUserId: jest.fn(),
     create: jest.fn(),
   },
 }));
@@ -48,21 +53,30 @@ describe("AuthService", () => {
       } = require("../../repositories/auth");
 
       const mockUser = {
-        id: 1,
+        id: "user-1",
+        tenantId: "tenant-1",
         email: "test@example.com",
-        name: "Test User",
-        tenant_id: 1,
-        password: "hashed-password",
+        firstName: "Test",
+        lastName: "User",
+        role: "trainer",
+        isActive: true,
       };
 
       const mockTenant = {
-        id: 1,
+        id: "tenant-1",
         name: "Test Tenant",
+        email: "tenant@example.com",
+        planType: "basic",
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       UserRepository.findByEmail.mockResolvedValue(mockUser);
-      TenantRepository.findById.mockResolvedValue(mockTenant);
+      UserRepository.getPasswordHash.mockResolvedValue("hashed-password");
       bcrypt.compare.mockResolvedValue(true);
+      TenantRepository.findById.mockResolvedValue(mockTenant);
+      UserRepository.updateLastLogin.mockResolvedValue();
 
       const result = await AuthService.login(loginCredentials);
 
@@ -86,12 +100,17 @@ describe("AuthService", () => {
       const { UserRepository } = require("../../repositories/auth");
 
       const mockUser = {
-        id: 1,
+        id: "user-1",
+        tenantId: "tenant-1",
         email: "test@example.com",
-        password: "hashed-password",
+        firstName: "Test",
+        lastName: "User",
+        role: "trainer",
+        isActive: true,
       };
 
       UserRepository.findByEmail.mockResolvedValue(mockUser);
+      UserRepository.getPasswordHash.mockResolvedValue("hashed-password");
       bcrypt.compare.mockResolvedValue(false);
 
       const result = await AuthService.login(loginCredentials);
@@ -116,24 +135,33 @@ describe("AuthService", () => {
         TenantRepository,
       } = require("../../repositories/auth");
 
-      UserRepository.findByEmail.mockResolvedValue(null);
+      UserRepository.emailExists.mockResolvedValue(false);
       bcrypt.hash.mockResolvedValue("hashed-password");
 
       const mockTenant = {
-        id: 1,
+        id: "tenant-1",
         name: "New Business",
+        email: "new@example.com",
+        planType: "basic",
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       const mockUser = {
-        id: 1,
+        id: "user-1",
+        tenantId: "tenant-1",
         email: "new@example.com",
         firstName: "New",
         lastName: "User",
-        tenant_id: 1,
+        role: "trainer",
+        isActive: true,
       };
 
-      TenantRepository.create.mockResolvedValue(mockTenant);
-      UserRepository.create.mockResolvedValue(mockUser);
+      TenantRepository.createTenantWithUser.mockResolvedValue({
+        tenant: mockTenant,
+        user: mockUser,
+      });
 
       const result = await AuthService.register(registerData);
 
@@ -145,13 +173,7 @@ describe("AuthService", () => {
 
     it("deve retornar erro para email já existente", async () => {
       const { UserRepository } = require("../../repositories/auth");
-
-      const existingUser = {
-        id: 1,
-        email: "new@example.com",
-      };
-
-      UserRepository.findByEmail.mockResolvedValue(existingUser);
+      UserRepository.emailExists.mockResolvedValue(true);
 
       const result = await AuthService.register(registerData);
 
@@ -167,19 +189,28 @@ describe("AuthService", () => {
       const { UserRepository } = require("../../repositories/auth");
 
       const mockRefreshToken = {
-        id: 1,
-        user_id: 1,
-        expires_at: new Date(Date.now() + 86400000),
+        id: "rt-1",
+        userId: "user-1",
+        tokenHash: "hash",
+        expiresAt: new Date(Date.now() + 86400000),
+        isRevoked: false,
+        createdAt: new Date(),
       };
 
       const mockUser = {
-        id: 1,
+        id: "user-1",
+        tenantId: "tenant-1",
         email: "test@example.com",
-        name: "Test User",
+        firstName: "Test",
+        lastName: "User",
+        role: "trainer",
+        isActive: true,
       };
 
-      RefreshTokenRepository.findByToken.mockResolvedValue(mockRefreshToken);
-      UserRepository.findById.mockResolvedValue(mockUser);
+      RefreshTokenRepository.verify.mockResolvedValue(mockRefreshToken as any);
+      UserRepository.findById.mockResolvedValue(mockUser as any);
+      RefreshTokenRepository.create.mockResolvedValue("new-rt");
+      RefreshTokenRepository.revoke.mockResolvedValue();
 
       const result = await AuthService.refreshToken("valid-refresh-token");
 
@@ -190,7 +221,7 @@ describe("AuthService", () => {
       const {
         RefreshTokenRepository,
       } = require("../../repositories/refreshToken");
-      RefreshTokenRepository.findByToken.mockResolvedValue(null);
+      RefreshTokenRepository.verify.mockResolvedValue(null);
 
       const result = await AuthService.refreshToken("invalid-token");
 

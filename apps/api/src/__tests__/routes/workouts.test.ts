@@ -5,7 +5,8 @@ import workoutsRouter from "../../routes/workouts";
 // Mock do middleware de autenticação
 jest.mock("../../middleware/auth", () => ({
   authenticateToken: (req: any, res: any, next: any) => {
-    req.user = { id: 1, tenantId: 1 };
+    req.user = { id: "user123", tenantId: "tenant123" };
+    req.tenantId = "tenant123";
     next();
   },
 }));
@@ -26,9 +27,10 @@ describe("Workouts Routes", () => {
       expect(workoutsRouter).toBeDefined();
     });
 
-    it("deve testar rota inexistente", async () => {
+    it("deve retornar 404 para treino inexistente", async () => {
+      // A rota '/:id' existe, mas retornará 404 se não achar
       const response = await request(app)
-        .get("/api/workouts/nonexistent")
+        .get("/api/workouts/00000000-0000-0000-0000-000000000000")
         .expect(404);
     });
   });

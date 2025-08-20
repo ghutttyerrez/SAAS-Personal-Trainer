@@ -54,37 +54,33 @@ export const refreshTokenSchema = z.object({
 });
 
 // Schemas de clientes
-export const createClientSchema = z.object({
-  name: z
+// Schemas de clientes (alinhados ao schema do banco)
+export const createClientBodySchema = z.object({
+  userId: z.string().uuid("User ID deve ser um UUID válido"),
+  date_of_birth: z
     .string()
-    .min(2, "Nome deve ter pelo menos 2 caracteres")
-    .max(100, "Nome deve ter no máximo 100 caracteres"),
-  email: z
-    .string()
-    .email("Email deve ter um formato válido")
-    .max(255, "Email deve ter no máximo 255 caracteres"),
-  phone: z
+    .datetime("Data de nascimento deve estar no formato ISO 8601")
+    .optional(),
+  gender: z.enum(["male", "female", "other"]).optional(),
+  height: z.number().min(0).max(300).optional(),
+  weight: z.number().min(0).max(500).optional(),
+  fitness_goal: z.string().max(2000).optional(),
+  medical_conditions: z.string().max(2000).optional(),
+  emergency_contact_name: z.string().max(255).optional(),
+  emergency_contact_phone: z
     .string()
     .optional()
     .refine(
       (val) => !val || /^\+?[\d\s\-\(\)]{10,20}$/.test(val),
       "Telefone deve ter um formato válido"
     ),
-  birth_date: z
-    .string()
-    .datetime("Data de nascimento deve estar no formato ISO 8601")
-    .optional(),
-  goals: z
-    .string()
-    .max(500, "Objetivos devem ter no máximo 500 caracteres")
-    .optional(),
-  medical_conditions: z
-    .string()
-    .max(1000, "Condições médicas devem ter no máximo 1000 caracteres")
-    .optional(),
+  emergency_contact_relationship: z.string().max(100).optional(),
+  is_active: z.boolean().optional(),
 });
 
-export const updateClientSchema = createClientSchema.partial();
+export const updateClientBodySchema = createClientBodySchema
+  .omit({ userId: true })
+  .partial();
 
 // Schemas de exercícios
 export const createExerciseSchema = z.object({

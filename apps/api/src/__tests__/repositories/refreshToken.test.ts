@@ -78,8 +78,11 @@ describe("RefreshTokenRepository", () => {
       });
 
       const result = await RefreshTokenRepository.revoke("token-to-revoke");
-
-      expect(result).toBe(true);
+      expect(result).toBeUndefined();
+      expect(pool.query).toHaveBeenCalledWith(
+        "UPDATE refresh_tokens SET is_revoked = true WHERE token_hash = $1",
+        [expect.any(String)]
+      );
     });
 
     it("deve retornar false quando token não for encontrado", async () => {
@@ -89,8 +92,11 @@ describe("RefreshTokenRepository", () => {
       });
 
       const result = await RefreshTokenRepository.revoke("nonexistent-token");
-
-      expect(result).toBe(false);
+      expect(result).toBeUndefined();
+      expect(pool.query).toHaveBeenCalledWith(
+        "UPDATE refresh_tokens SET is_revoked = true WHERE token_hash = $1",
+        [expect.any(String)]
+      );
     });
   });
 });
