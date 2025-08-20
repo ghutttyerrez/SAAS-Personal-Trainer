@@ -38,17 +38,17 @@ COPY nginx.conf /etc/nginx/nginx.conf
 
 # Create nginx user and set permissions
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    chown -R nginx:nginx /var/cache/nginx && \
-    chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d
+  chown -R nginx:nginx /var/cache/nginx && \
+  chown -R nginx:nginx /var/log/nginx && \
+  chown -R nginx:nginx /etc/nginx/conf.d
 
 # Create necessary directories for nginx
 RUN mkdir -p /var/cache/nginx/client_temp && \
-    mkdir -p /var/cache/nginx/proxy_temp && \
-    mkdir -p /var/cache/nginx/fastcgi_temp && \
-    mkdir -p /var/cache/nginx/uwsgi_temp && \
-    mkdir -p /var/cache/nginx/scgi_temp && \
-    chown -R nginx:nginx /var/cache/nginx
+  mkdir -p /var/cache/nginx/proxy_temp && \
+  mkdir -p /var/cache/nginx/fastcgi_temp && \
+  mkdir -p /var/cache/nginx/uwsgi_temp && \
+  mkdir -p /var/cache/nginx/scgi_temp && \
+  chown -R nginx:nginx /var/cache/nginx
 
 # Switch to nginx user
 USER nginx
@@ -58,7 +58,7 @@ EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
 # Add build metadata
 ARG VERSION=unknown
@@ -66,12 +66,12 @@ ARG BUILD_DATE=unknown
 ARG VCS_REF=unknown
 
 LABEL org.opencontainers.image.version="$VERSION" \
-      org.opencontainers.image.created="$BUILD_DATE" \
-      org.opencontainers.image.revision="$VCS_REF" \
-      org.opencontainers.image.title="Personal Trainer Web" \
-      org.opencontainers.image.description="SAAS Personal Trainer Web Application" \
-      org.opencontainers.image.vendor="Personal Trainer" \
-      org.opencontainers.image.source="https://github.com/ghutttyerrez/SAAS-Personal-Trainer"
+  org.opencontainers.image.created="$BUILD_DATE" \
+  org.opencontainers.image.revision="$VCS_REF" \
+  org.opencontainers.image.title="Personal Trainer Web" \
+  org.opencontainers.image.description="SAAS Personal Trainer Web Application" \
+  org.opencontainers.image.vendor="Personal Trainer" \
+  org.opencontainers.image.source="https://github.com/ghutttyerrez/SAAS-Personal-Trainer"
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

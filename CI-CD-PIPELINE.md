@@ -30,6 +30,7 @@ graph TD
 ### 1. CI/CD Principal (`ci-cd.yml`)
 
 **Triggers:**
+
 - Push para `main` ou `develop`
 - Pull Requests para `main` ou `develop`
 - Dispatch manual
@@ -37,6 +38,7 @@ graph TD
 **Jobs:**
 
 #### 🧪 Test & Quality
+
 - **Matrix Strategy**: api, web, mobile
 - **Steps**:
   1. Checkout code
@@ -49,32 +51,38 @@ graph TD
   8. Upload to Codecov
 
 **Quality Gates:**
+
 - Lint deve passar sem erros
 - Build deve ser bem-sucedido
 - Todos os testes devem passar
 - Cobertura de testes >70%
 
 #### 🔒 Security Scan
+
 - **Trivy** vulnerability scanner
 - **npm audit** dependency check
 - Upload results to GitHub Security
 
 #### ✅ Quality Gate (PR only)
+
 - Verifica cobertura de testes
 - Comenta no PR com métricas
 - Bloqueia merge se não atingir 70%
 
 #### 🐳 Build Images (main only)
+
 - Build multi-stage Docker images
 - Push para GitHub Container Registry
 - Cache layers para otimização
 
 #### 🚀 Deploy Staging (main only)
+
 - Deploy automático para staging
 - Health checks
 - Smoke tests
 
 #### 🌟 Deploy Production (main only)
+
 - Requer aprovação manual
 - Rolling update sem downtime
 - Post-deployment verification
@@ -82,9 +90,11 @@ graph TD
 ### 2. Pull Request Validation (`pr-validation.yml`)
 
 **Triggers:**
+
 - PRs opened/synchronized/reopened
 
 **Features:**
+
 - Validação rápida de builds
 - Code review automático
 - Performance analysis
@@ -93,10 +103,12 @@ graph TD
 ### 3. Release & Deploy (`release.yml`)
 
 **Triggers:**
+
 - Tags `v*.*.*`
 - Manual dispatch
 
 **Features:**
+
 - Criação automática de releases
 - Changelog gerado automaticamente
 - Build de imagens versionadas
@@ -105,9 +117,11 @@ graph TD
 ### 4. Monitoramento (`monitoring.yml`)
 
 **Schedule:**
+
 - A cada 15 minutos
 
 **Features:**
+
 - Health checks automáticos
 - Performance monitoring
 - Database health
@@ -118,6 +132,7 @@ graph TD
 ### Estratégia Multi-Stage
 
 #### API Container
+
 ```dockerfile
 # Stage 1: Build
 FROM node:18-alpine AS builder
@@ -129,6 +144,7 @@ FROM node:18-alpine AS production
 ```
 
 #### Web Container
+
 ```dockerfile
 # Stage 1: Build React
 FROM node:18-alpine AS builder
@@ -140,6 +156,7 @@ FROM nginx:alpine AS production
 ```
 
 ### Container Features
+
 - **Security**: Non-root user, security updates
 - **Health Checks**: Built-in endpoint monitoring
 - **Optimization**: Multi-stage builds, layer caching
@@ -149,11 +166,11 @@ FROM nginx:alpine AS production
 
 ### Environment Matrix
 
-| Environment | Branch | Approval | Monitoring |
-|-------------|--------|----------|------------|
-| Development | feature/* | Auto | Basic |
-| Staging | main | Auto | Full |
-| Production | tags | Manual | Enhanced |
+| Environment | Branch     | Approval | Monitoring |
+| ----------- | ---------- | -------- | ---------- |
+| Development | feature/\* | Auto     | Basic      |
+| Staging     | main       | Auto     | Full       |
+| Production  | tags       | Manual   | Enhanced   |
 
 ### Rolling Updates
 
@@ -172,7 +189,7 @@ docker-compose up -d --no-deps api
 # 2. Wait for health check
 wait_for_health "api"
 
-# 3. Deploy web version  
+# 3. Deploy web version
 docker-compose up -d --no-deps web
 
 # 4. Verify complete deployment
@@ -184,6 +201,7 @@ verify_deployment
 ### Critérios de Aprovação
 
 #### Development → Staging
+
 - ✅ Todos os testes passam
 - ✅ Lint sem erros
 - ✅ Build bem-sucedido
@@ -191,6 +209,7 @@ verify_deployment
 - ✅ Security scan limpo
 
 #### Staging → Production
+
 - ✅ Deploy staging bem-sucedido
 - ✅ Smoke tests passam
 - ✅ Performance dentro dos limites
@@ -199,27 +218,30 @@ verify_deployment
 
 ### Métricas Monitoradas
 
-| Métrica | Limite | Ação |
-|---------|--------|------|
-| Test Coverage | >70% | Block merge |
-| Response Time | <2s | Warning |
-| Error Rate | <1% | Alert |
-| Uptime | >99.9% | Escalate |
+| Métrica       | Limite | Ação        |
+| ------------- | ------ | ----------- |
+| Test Coverage | >70%   | Block merge |
+| Response Time | <2s    | Warning     |
+| Error Rate    | <1%    | Alert       |
+| Uptime        | >99.9% | Escalate    |
 
 ## 🔒 Segurança
 
 ### Scans Automáticos
+
 - **Trivy**: Container vulnerabilities
-- **npm audit**: Dependency vulnerabilities  
+- **npm audit**: Dependency vulnerabilities
 - **CodeQL**: Code analysis
 - **Secrets**: Credential scanning
 
 ### Secrets Management
+
 - GitHub Secrets para credentials
 - Environment-specific variables
 - Rotation automática quando possível
 
 ### Access Control
+
 - Branch protection rules
 - Required reviews
 - Status checks obrigatórios
@@ -228,12 +250,13 @@ verify_deployment
 ## 📈 Monitoramento & Observabilidade
 
 ### Health Checks
+
 ```bash
 # API Health
 GET /api/health
 -> 200 OK {"status": "healthy"}
 
-# Web Health  
+# Web Health
 GET /health
 -> 200 OK "healthy"
 
@@ -242,6 +265,7 @@ pg_isready -U postgres
 ```
 
 ### Métricas Coletadas
+
 - **Application**: Response time, error rate, throughput
 - **Infrastructure**: CPU, memory, disk, network
 - **Business**: Active users, API calls, features usage
@@ -249,14 +273,16 @@ pg_isready -U postgres
 ### Alerting Strategy
 
 #### Channels
+
 - 🔔 Slack notifications
-- 📧 Email alerts  
+- 📧 Email alerts
 - 🐛 GitHub issues (incidents)
 - 📊 Dashboard alerts
 
 #### Severity Levels
+
 - **P0 Critical**: Production down
-- **P1 High**: Degraded performance  
+- **P1 High**: Degraded performance
 - **P2 Medium**: Warning thresholds
 - **P3 Low**: Informational
 
@@ -275,6 +301,7 @@ pg_isready -U postgres
 ```
 
 **Features:**
+
 - ✅ Prerequisites check
 - 🧪 Automated testing
 - 🐳 Docker build & push
@@ -298,6 +325,7 @@ pg_isready -U postgres
 ## 🔄 Workflow de Desenvolvimento
 
 ### Feature Development
+
 1. 🌿 Create feature branch
 2. 💻 Develop + test locally
 3. 📤 Push changes
@@ -307,6 +335,7 @@ pg_isready -U postgres
 7. 🚀 Auto-deploy to staging
 
 ### Release Process
+
 1. 🏷️ Create release tag
 2. 📦 Build release artifacts
 3. 📝 Generate changelog
@@ -315,6 +344,7 @@ pg_isready -U postgres
 6. 📚 Update documentation
 
 ### Hotfix Process
+
 1. 🚨 Create hotfix branch from main
 2. 🔧 Implement critical fix
 3. ⚡ Fast-track testing
@@ -326,6 +356,7 @@ pg_isready -U postgres
 ### Common Issues
 
 #### Build Failures
+
 ```bash
 # Check logs
 docker-compose logs api
@@ -338,6 +369,7 @@ npm audit
 ```
 
 #### Deploy Failures
+
 ```bash
 # Check health status
 curl -f http://localhost:3001/api/health
@@ -350,6 +382,7 @@ docker logs pt-api-prod
 ```
 
 #### Test Failures
+
 ```bash
 # Run tests locally
 npm run test:coverage
@@ -364,11 +397,13 @@ npm test -- --testNamePattern="auth"
 ### Performance Issues
 
 #### Slow Builds
+
 - ✅ Enable Docker layer caching
 - ✅ Optimize Dockerfile stages
 - ✅ Use npm ci instead of install
 
 #### Slow Tests
+
 - ✅ Run tests in parallel
 - ✅ Mock external dependencies
 - ✅ Use test databases
@@ -376,18 +411,21 @@ npm test -- --testNamePattern="auth"
 ## 🎯 Métricas de Sucesso
 
 ### Pipeline Performance
+
 - **Build Time**: <5 minutos
-- **Test Execution**: <3 minutos  
+- **Test Execution**: <3 minutos
 - **Deploy Time**: <2 minutos
 - **Recovery Time**: <5 minutos
 
 ### Quality Metrics
+
 - **Test Coverage**: >70%
 - **Bug Escape Rate**: <1%
 - **Security Vulnerabilities**: 0 high/critical
 - **Performance Regression**: 0%
 
 ### Business Metrics
+
 - **Deployment Frequency**: Daily
 - **Lead Time**: <2 horas
 - **MTTR**: <15 minutos
@@ -396,6 +434,7 @@ npm test -- --testNamePattern="auth"
 ## 🔮 Roadmap
 
 ### Próximas Melhorias
+
 - [ ] **Progressive Deployment**: Canary releases
 - [ ] **Advanced Monitoring**: APM integration
 - [ ] **Infrastructure as Code**: Terraform
@@ -404,6 +443,7 @@ npm test -- --testNamePattern="auth"
 - [ ] **Chaos Engineering**: Resilience testing
 
 ### Integrações Planejadas
+
 - [ ] **Kubernetes**: Container orchestration
 - [ ] **ArgoCD**: GitOps deployment
 - [ ] **Istio**: Service mesh

@@ -32,8 +32,16 @@ describe("Clients Routes", () => {
       const { ClientsRepository } = require("../../repositories/clients");
       ClientsRepository.deactivateClient.mockResolvedValue(true);
 
+      // Mock do token de autenticação
+      const mockToken = "valid-jwt-token";
+      jest.spyOn(require("jsonwebtoken"), "verify").mockReturnValue({
+        tenantId: "tenant123",
+        userId: "user123",
+      });
+
       const response = await request(app)
         .patch("/api/clients/1/deactivate")
+        .set("Authorization", `Bearer ${mockToken}`)
         .expect(200);
 
       expect(response.body).toEqual({
@@ -46,13 +54,21 @@ describe("Clients Routes", () => {
       const { ClientsRepository } = require("../../repositories/clients");
       ClientsRepository.deactivateClient.mockResolvedValue(false);
 
+      // Mock do token de autenticação
+      const mockToken = "valid-jwt-token";
+      jest.spyOn(require("jsonwebtoken"), "verify").mockReturnValue({
+        tenantId: "tenant123",
+        userId: "user123",
+      });
+
       const response = await request(app)
         .patch("/api/clients/999/deactivate")
+        .set("Authorization", `Bearer ${mockToken}`)
         .expect(404);
 
       expect(response.body).toEqual({
         success: false,
-        message: "Cliente não encontrado",
+        message: "Cliente não encontrado ou já inativo",
       });
     });
 
@@ -62,8 +78,16 @@ describe("Clients Routes", () => {
         new Error("Database error")
       );
 
+      // Mock do token de autenticação
+      const mockToken = "valid-jwt-token";
+      jest.spyOn(require("jsonwebtoken"), "verify").mockReturnValue({
+        tenantId: "tenant123",
+        userId: "user123",
+      });
+
       const response = await request(app)
         .patch("/api/clients/1/deactivate")
+        .set("Authorization", `Bearer ${mockToken}`)
         .expect(500);
 
       expect(response.body).toHaveProperty("success", false);

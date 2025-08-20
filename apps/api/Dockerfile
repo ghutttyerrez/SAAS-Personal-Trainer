@@ -31,7 +31,7 @@ RUN apk update && apk upgrade && apk add --no-cache dumb-init
 
 # Create app user
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nestjs -u 1001
+  adduser -S nestjs -u 1001
 
 # Set working directory
 WORKDIR /app
@@ -52,14 +52,14 @@ EXPOSE 3001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "const http = require('http'); \
-    const options = { host: 'localhost', port: 3001, path: '/api/health', timeout: 2000 }; \
-    const req = http.request(options, (res) => { \
-        console.log('STATUS: ' + res.statusCode); \
-        process.exit(res.statusCode === 200 ? 0 : 1); \
-    }); \
-    req.on('error', () => process.exit(1)); \
-    req.end();"
+  CMD node -e "const http = require('http'); \
+  const options = { host: 'localhost', port: 3001, path: '/api/health', timeout: 2000 }; \
+  const req = http.request(options, (res) => { \
+  console.log('STATUS: ' + res.statusCode); \
+  process.exit(res.statusCode === 200 ? 0 : 1); \
+  }); \
+  req.on('error', () => process.exit(1)); \
+  req.end();"
 
 # Set environment variables
 ENV NODE_ENV=production
@@ -71,12 +71,12 @@ ARG BUILD_DATE=unknown
 ARG VCS_REF=unknown
 
 LABEL org.opencontainers.image.version="$VERSION" \
-      org.opencontainers.image.created="$BUILD_DATE" \
-      org.opencontainers.image.revision="$VCS_REF" \
-      org.opencontainers.image.title="Personal Trainer API" \
-      org.opencontainers.image.description="SAAS Personal Trainer API Server" \
-      org.opencontainers.image.vendor="Personal Trainer" \
-      org.opencontainers.image.source="https://github.com/ghutttyerrez/SAAS-Personal-Trainer"
+  org.opencontainers.image.created="$BUILD_DATE" \
+  org.opencontainers.image.revision="$VCS_REF" \
+  org.opencontainers.image.title="Personal Trainer API" \
+  org.opencontainers.image.description="SAAS Personal Trainer API Server" \
+  org.opencontainers.image.vendor="Personal Trainer" \
+  org.opencontainers.image.source="https://github.com/ghutttyerrez/SAAS-Personal-Trainer"
 
 # Start the application
 CMD ["dumb-init", "node", "dist/index.js"]

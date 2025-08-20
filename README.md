@@ -26,6 +26,7 @@ Este é um monorepo contendo um aplicativo completo para Personal Trainers com v
 ## 🚀 Tecnologias Utilizadas
 
 ### Core Stack
+
 - **Monorepo**: Turborepo
 - **Frontend Web**: React, TypeScript, Recharts
 - **Mobile**: React Native, Expo, EAS Build, TypeScript
@@ -36,6 +37,7 @@ Este é um monorepo contendo um aplicativo completo para Personal Trainers com v
 - **Testes**: Jest + Supertest + Coverage (>70%)
 
 ### DevOps & CI/CD
+
 - **Containerização**: Docker + Docker Compose
 - **CI/CD**: GitHub Actions
 - **Registry**: GitHub Container Registry
@@ -44,6 +46,7 @@ Este é um monorepo contendo um aplicativo completo para Personal Trainers com v
 - **Performance**: Lighthouse CI
 
 ### Quality Assurance
+
 - **Test Coverage**: >70% minimum threshold
 - **Code Quality**: ESLint + TypeScript strict mode
 - **Security Scanning**: Automated vulnerability detection
@@ -65,6 +68,7 @@ Este é um monorepo contendo um aplicativo completo para Personal Trainers com v
 ## 🛠️ Scripts Disponíveis
 
 ### Desenvolvimento
+
 - `npm run dev` - Inicia todos os projetos em modo desenvolvimento
 - `npm run build` - Faz build de todos os projetos
 - `npm run lint` - Executa linting em todos os projetos
@@ -73,6 +77,7 @@ Este é um monorepo contendo um aplicativo completo para Personal Trainers com v
 - `npm run test:coverage` - Executa testes com relatório de cobertura
 
 ### CI/CD e Deploy
+
 - `npm run ci:check` - Executa validações completas (lint + tipos + testes)
 - `npm run docker:build` - Constrói imagens Docker
 - `npm run docker:dev` - Inicia ambiente Docker de desenvolvimento
@@ -80,6 +85,7 @@ Este é um monorepo contendo um aplicativo completo para Personal Trainers com v
 - `npm run deploy:prod` - Deploy para produção
 
 ### Release
+
 - `npm run release` - Cria uma release patch (x.x.X)
 - `npm run release:minor` - Cria uma release minor (x.X.x)
 - `npm run release:major` - Cria uma release major (X.x.x)
@@ -87,42 +93,55 @@ Este é um monorepo contendo um aplicativo completo para Personal Trainers com v
 ## 🚀 Como Iniciar
 
 ### Pré-requisitos
-- Node.js 18+ 
+
+- Node.js 18+
 - Docker + Docker Compose
 - Git
+- GitHub CLI (para configuração CI/CD)
 
 ### 1. Instale as dependências:
 
-   ```bash
-   git clone https://github.com/ghutttyerrez/SAAS-Personal-Trainer.git
-   cd SAAS-Personal-Trainer
-   npm install
-   ```
+```bash
+git clone https://github.com/ghutttyerrez/SAAS-Personal-Trainer.git
+cd SAAS-Personal-Trainer
+npm install
+```
 
 ### 2. Configure as variáveis de ambiente:
 
-   ```bash
-   # Copie os arquivos de exemplo
-   cp .env.development.example .env.development
-   cp .env.staging.example .env.staging
-   cp .env.production.example .env.production
-   
-   # Edite os arquivos com suas configurações
-   ```
+```bash
+# Copie os arquivos de exemplo
+cp .env.development.example .env.development
+cp .env.staging.example .env.staging
+cp .env.production.example .env.production
 
-### 3. Inicie o ambiente de desenvolvimento:
+# Edite os arquivos com suas configurações
+```
 
-   ```bash
-   # Opção 1: Desenvolvimento local
-   npm run dev
-   
-   # Opção 2: Ambiente Docker completo
-   npm run docker:dev
-   ```
+### 3. Configure CI/CD (Recomendado):
+
+```bash
+# Configuração completa automatizada
+./scripts/setup-cicd.sh
+
+# Ou configure manualmente seguindo o guia
+# Ver: SETUP-GUIDE.md
+```
+
+### 4. Inicie o ambiente de desenvolvimento:
+
+```bash
+# Opção 1: Desenvolvimento local
+npm run dev
+
+# Opção 2: Ambiente Docker completo
+npm run docker:dev
+```
 
 ## 🐳 Deploy com Docker
 
 ### Desenvolvimento
+
 ```bash
 # Iniciar ambiente completo
 docker-compose -f docker-compose.dev.yml up -d
@@ -135,6 +154,7 @@ docker-compose -f docker-compose.dev.yml down
 ```
 
 ### Staging/Produção
+
 ```bash
 # Build das imagens
 ./scripts/deploy.sh staging v1.0.0 build
@@ -151,6 +171,7 @@ docker-compose -f docker-compose.dev.yml down
 O projeto implementa um pipeline robusto de CI/CD com:
 
 ### Continuous Integration (CI)
+
 - ✅ Validação de código (lint + types)
 - 🧪 Execução de testes automatizados
 - 📊 Verificação de cobertura (>70%)
@@ -159,6 +180,7 @@ O projeto implementa um pipeline robusto de CI/CD com:
 - ⚡ Auditoria de performance (Lighthouse)
 
 ### Continuous Deployment (CD)
+
 - 🚀 Deploy automatizado para staging
 - 📋 Quality gates para produção
 - 🔄 Rolling updates sem downtime
@@ -167,6 +189,7 @@ O projeto implementa um pipeline robusto de CI/CD com:
 - 📝 Documentação automática de releases
 
 ### Ambientes
+
 - **Development**: Ambiente local Docker
 - **Staging**: Pre-produção para testes
 - **Production**: Ambiente live com monitoramento
@@ -174,11 +197,13 @@ O projeto implementa um pipeline robusto de CI/CD com:
 ## 📊 Monitoramento
 
 ### Health Checks
+
 - API: `http://localhost:3001/api/health`
 - Web: `http://localhost/health`
 - Database: Verificação automática de conectividade
 
 ### Métricas Disponíveis
+
 - Response time da API
 - Uptime dos serviços
 - Utilização de recursos
@@ -186,6 +211,7 @@ O projeto implementa um pipeline robusto de CI/CD com:
 - Performance scores (Lighthouse)
 
 ### Alertas
+
 - Slack/Discord notifications
 - Issues automáticos no GitHub
 - Dashboards Grafana + Prometheus
@@ -211,12 +237,14 @@ O projeto implementa um pipeline robusto de CI/CD com:
 ## 🧪 Testes
 
 ### Cobertura Atual
+
 - **API**: >70% (linhas, funções, branches, statements)
 - **Middleware**: 91% validation coverage
 - **Routes**: 77% authentication coverage
 - **Repositories**: 100% client operations
 
 ### Tipos de Teste
+
 - **Unit Tests**: Lógica de negócio isolada
 - **Integration Tests**: APIs e banco de dados
 - **E2E Tests**: Fluxos completos de usuário
@@ -231,6 +259,7 @@ O projeto implementa um pipeline robusto de CI/CD com:
 5. Abra um Pull Request
 
 ### Workflow de Desenvolvimento
+
 1. Todas as mudanças devem passar no CI
 2. Cobertura de testes deve ser mantida >70%
 3. Code review obrigatório
